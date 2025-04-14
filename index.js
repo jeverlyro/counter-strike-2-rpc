@@ -1,20 +1,17 @@
-// CS2 Discord RPC - Main script
 const fs = require('fs');
 const http = require('http');
 const DiscordRPC = require('discord-rpc');
 
-// Discord application settings
-const CLIENT_ID = '1359905002658988209'; // Replace with your Discord Application Client ID
+const CLIENT_ID = '1359905002658988209'; 
 const RPC = new DiscordRPC.Client({ transport: 'ipc' });
-const UPDATE_INTERVAL = 15000; // Update interval in ms
+const UPDATE_INTERVAL = 15000;
 
-// Game state variables
 let gameState = {
   map: '',
   phase: '',
   team: '',
   health: 0,
-  playerName: '',  // Added player name field
+  playerName: '', 
   score: {
     ct: 0,
     t: 0
@@ -27,7 +24,6 @@ let gameState = {
   }
 };
 
-// Map assets for Discord
 const mapAssets = {
   'de_dust2': 'de_dust2',
   'de_inferno': 'de_inferno',
@@ -39,7 +35,6 @@ const mapAssets = {
   'de_anubis': 'de_anubis'
 };
 
-// Helper function to capitalize first letter
 function capitalizeFirstLetter(string) {
   if (!string) return '';
   return string.charAt(0).toUpperCase() + string.slice(1);
@@ -52,6 +47,19 @@ RPC.on('ready', () => {
 });
 
 function updateRPC() {
+  if (gameState.map && (gameState.phase === 'gameover' || !gameState.phase)) {
+    RPC.setActivity({
+      details: 'In Lobby',
+      state: `Last match: ${gameState.score.ct} : ${gameState.score.t} | ${gameState.matchStats.kills}K/${gameState.matchStats.deaths}D/${gameState.matchStats.assists}A`,
+      largeImageKey: 'cs2_logo',
+      largeImageText: 'Counter-Strike 2',
+      smallImageKey: gameState.team.toLowerCase(),
+      smallImageText: `Last Team: ${gameState.team}`,
+      instance: false
+    });
+    return;
+  }
+  
   if (!gameState.map) {
     RPC.setActivity({
       details: 'In Menu',
@@ -80,7 +88,6 @@ function updateRPC() {
   RPC.setActivity(activity);
 }
 
-// HTTP server to receive game state updates
 const server = http.createServer((req, res) => {
   if (req.method === 'POST') {
     let body = '';
@@ -107,7 +114,6 @@ const server = http.createServer((req, res) => {
   }
 });
 
-// Process game state data
 function updateGameState(data) {
   // Update map
   if (data.map && data.map.name) {
@@ -122,11 +128,6 @@ function updateGameState(data) {
   // Update team
   if (data.player && data.player.team) {
     gameState.team = data.player.team;
-  }
-  
-  // Update health
-  if (data.player && data.player.state && data.player.state.health !== undefined) {
-    gameState.health = data.player.state.health;
   }
   
   // Update player name
@@ -147,15 +148,10 @@ function updateGameState(data) {
     gameState.matchStats.assists = data.player.match_stats.assists;
   }
   
-  // Update weapons
-  if (data.player && data.player.weapons) {
-    gameState.weapons = data.player.weapons;
-  }
-  
   console.log('Game state updated:', gameState);
 }
 
-// Start the server
+// Start server
 const PORT = 3000;
 server.listen(PORT, () => {
   console.log(`CS2 GSI server listening on port ${PORT}`);
@@ -164,7 +160,6 @@ server.listen(PORT, () => {
 // Connect to Discord
 RPC.login({ clientId: CLIENT_ID }).catch(console.error);
 
-// Ensure proper cleanup
 process.on('SIGINT', () => {
   RPC.destroy();
   process.exit(0);
