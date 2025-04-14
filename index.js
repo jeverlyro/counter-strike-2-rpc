@@ -6,6 +6,8 @@ const CLIENT_ID = '1359905002658988209';
 const RPC = new DiscordRPC.Client({ transport: 'ipc' });
 const UPDATE_INTERVAL = 15000;
 
+let gameDetected = false;
+
 let gameState = {
   map: '',
   phase: '',
@@ -43,10 +45,14 @@ function capitalizeFirstLetter(string) {
 RPC.on('ready', () => {
   console.log('Discord RPC Connected');
   updateRPC();
-  setInterval(updateRPC, UPDATE_INTERVAL);
 });
 
 function updateRPC() {
+  if (!gameDetected) {
+    console.log('Game not detected yet. Not showing RPC.');
+    return;
+  }
+
   if (gameState.map && (gameState.phase === 'gameover' || !gameState.phase)) {
     RPC.setActivity({
       details: 'In Lobby',
@@ -115,6 +121,12 @@ const server = http.createServer((req, res) => {
 });
 
 function updateGameState(data) {
+  if (!gameDetected) {
+    gameDetected = true;
+    console.log('Game detected, starting RPC updates');
+    setInterval(updateRPC, UPDATE_INTERVAL);
+  }
+  
   // Update map
   if (data.map && data.map.name) {
     gameState.map = data.map.name;
@@ -149,6 +161,8 @@ function updateGameState(data) {
   }
   
   console.log('Game state updated:', gameState);
+  
+  updateRPC();
 }
 
 // Start server
